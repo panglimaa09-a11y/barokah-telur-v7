@@ -1,239 +1,390 @@
-/* CatatanBarokah Dashboard Final
-   Replaces the previous 3D / anti-gravity dashboard styling.
+/* CatatanBarokah — Dashboard Redesign v4
+   Direction: clean business analytics / modern bookkeeping.
+   No 3D, no dashed frames, no stacked borders.
 */
 
 #dashboard{
-  background:#f6f8f7 !important;
+  --dash-green:#176b45;
+  --dash-green-dark:#0d4f38;
+  --dash-ink:#172d26;
+  --dash-muted:#718079;
+  --dash-line:#e5ebe7;
+  --dash-bg:#f7f9f7;
+  --dash-red:#bd4632;
+  background:var(--dash-bg) !important;
   min-height:calc(100vh - 72px) !important;
-  padding-bottom:48px !important;
+  padding:0 0 56px !important;
   perspective:none !important;
 }
 
 #dashboard *{
-  animation:none !important;
   transform:none !important;
   transform-style:flat !important;
-}
-
-#dashboard .section-head{
-  max-width:1180px !important;
-  padding:54px 34px 24px !important;
-}
-
-#dashboard .section-head h2{
-  font-family:'DM Sans',system-ui,sans-serif !important;
-  font-size:38px !important;
-  line-height:1.1 !important;
-  font-weight:800 !important;
-  letter-spacing:-1.5px !important;
-  color:#16382e !important;
   text-shadow:none !important;
 }
 
-#dashboard .section-head p{color:#718078 !important}
-
-#dashboard .cash-card{
-  max-width:1180px !important;
-  margin:0 auto 20px !important;
-  padding:0 34px !important;
+/* Header */
+#dashboard .section-head{
+  max-width:1160px !important;
+  padding:48px 28px 22px !important;
+  margin:auto !important;
+  display:flex !important;
+  align-items:flex-end !important;
+  justify-content:space-between !important;
+  gap:24px !important;
+}
+#dashboard .section-head h2{
+  margin:7px 0 7px !important;
+  color:var(--dash-ink) !important;
+  font-family:Arial,Helvetica,sans-serif !important;
+  font-size:36px !important;
+  line-height:1.05 !important;
+  font-weight:800 !important;
+  letter-spacing:-1.5px !important;
+}
+#dashboard .section-head p{
+  margin:0 !important;
+  color:var(--dash-muted) !important;
+  font-size:13px !important;
+}
+#dashboard .section-head .btn{
+  background:var(--dash-green) !important;
+  color:#fff !important;
+  border-radius:10px !important;
+  padding:12px 16px !important;
+  box-shadow:none !important;
+  white-space:nowrap !important;
 }
 
+/* Main balance module — completely different from the old framed card */
+#dashboard .cash-card{
+  max-width:1160px !important;
+  margin:0 auto 16px !important;
+  padding:0 28px !important;
+}
 #dashboard .cash-inner{
+  min-height:245px !important;
+  padding:30px 34px !important;
+  border:1px solid #dce7e1 !important;
+  border-radius:22px !important;
+  background:#fff !important;
+  box-shadow:0 10px 28px rgba(20,55,42,.07) !important;
   position:relative !important;
   overflow:hidden !important;
-  min-height:285px !important;
-  padding:34px 38px !important;
-  border:0 !important;
-  border-radius:24px !important;
-  background:linear-gradient(135deg,#0d7650 0%,#075d40 55%,#064a35 100%) !important;
-  box-shadow:0 18px 40px rgba(5,74,51,.18) !important;
+  display:grid !important;
+  grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr) !important;
+  grid-template-rows:auto 1fr auto !important;
+  column-gap:40px !important;
 }
-
 #dashboard .cash-inner:before{
   content:"" !important;
   position:absolute !important;
-  inset:auto -80px -120px auto !important;
-  width:300px !important;
-  height:300px !important;
+  top:0 !important;
+  left:0 !important;
+  width:7px !important;
+  height:100% !important;
+  background:var(--dash-green) !important;
   border:0 !important;
-  border-radius:50% !important;
-  background:rgba(255,255,255,.06) !important;
-  pointer-events:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
 }
-
 #dashboard .cash-inner:after{
   content:"" !important;
   position:absolute !important;
-  width:170px !important;
-  height:170px !important;
-  right:80px !important;
-  top:-90px !important;
+  width:210px !important;
+  height:210px !important;
+  right:-110px !important;
+  bottom:-130px !important;
+  background:#eef6f1 !important;
   border-radius:50% !important;
-  background:rgba(255,255,255,.05) !important;
+  border:0 !important;
   pointer-events:none !important;
 }
-
 #dashboard .cash-label{
-  position:relative !important;
-  z-index:2 !important;
+  grid-column:1 !important;
+  grid-row:1 !important;
   display:block !important;
-  width:max-content !important;
-  font-size:12px !important;
+  width:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+  font-size:0 !important;
   line-height:1 !important;
-  letter-spacing:.14em !important;
-  text-transform:uppercase !important;
-  font-weight:800 !important;
-  color:rgba(255,255,255,.72) !important;
+  letter-spacing:0 !important;
+  color:var(--dash-muted) !important;
+  text-transform:none !important;
   opacity:1 !important;
 }
-
 #dashboard .cash-label:after{
-  content:none !important;
+  content:"Saldo" !important;
+  font-size:12px !important;
+  letter-spacing:.12em !important;
+  text-transform:uppercase !important;
+  font-weight:800 !important;
+  color:var(--dash-muted) !important;
 }
-
 #dashboard .cash-inner>strong{
-  position:relative !important;
-  z-index:2 !important;
+  grid-column:1 !important;
+  grid-row:2 !important;
+  align-self:center !important;
   display:block !important;
-  margin:16px 0 26px !important;
-  font-size:56px !important;
+  margin:8px 0 0 !important;
+  color:var(--dash-ink) !important;
+  font-size:52px !important;
   line-height:1 !important;
-  letter-spacing:-2px !important;
-  color:#fff !important;
-  text-shadow:none !important;
+  font-weight:800 !important;
+  letter-spacing:-2.5px !important;
 }
-
 #dashboard .cash-month{
-  position:relative !important;
-  z-index:2 !important;
-  display:flex !important;
-  gap:48px !important;
+  grid-column:2 !important;
+  grid-row:1 / span 2 !important;
+  align-self:center !important;
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:0 !important;
+  padding-left:30px !important;
+  border-left:1px solid var(--dash-line) !important;
 }
-
-#dashboard .cash-month div{display:flex !important;flex-direction:column !important;gap:4px !important}
-#dashboard .cash-month span{font-size:12px !important;color:rgba(255,255,255,.68) !important}
-#dashboard .cash-month b{font-size:20px !important;color:#bdebd3 !important}
-#dashboard .cash-month div:nth-child(2) b{color:#ffd0c3 !important}
-
+#dashboard .cash-month div{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:6px !important;
+  padding:13px 0 !important;
+  border-bottom:1px solid var(--dash-line) !important;
+}
+#dashboard .cash-month div:last-child{border-bottom:0 !important}
+#dashboard .cash-month span{
+  font-size:11px !important;
+  color:var(--dash-muted) !important;
+}
+#dashboard .cash-month b{
+  font-size:21px !important;
+  color:var(--dash-green) !important;
+  font-weight:800 !important;
+}
+#dashboard .cash-month div:nth-child(2) b{color:var(--dash-red) !important}
 #dashboard .opening-cash{
-  position:relative !important;
-  z-index:2 !important;
-  margin-top:22px !important;
-  padding:11px 15px !important;
+  grid-column:1 !important;
+  grid-row:3 !important;
   width:max-content !important;
   max-width:100% !important;
-  background:rgba(255,255,255,.09) !important;
-  border:1px solid rgba(255,255,255,.10) !important;
-  border-radius:11px !important;
-  font-size:12px !important;
-  color:rgba(255,255,255,.76) !important;
+  margin:18px 0 0 !important;
+  padding:8px 12px !important;
+  background:#f2f6f3 !important;
+  border:1px solid #e1ebe5 !important;
+  border-radius:9px !important;
+  color:#66766e !important;
+  font-size:11px !important;
 }
+#dashboard .opening-cash b{font-size:13px !important;color:var(--dash-ink) !important;margin-left:5px !important}
 
-#dashboard .opening-cash b{font-size:14px !important;color:#fff !important}
-
+/* Notice */
 #dashboard .budget-card{
-  max-width:1180px !important;
-  margin:0 auto 20px !important;
-  padding:16px 22px !important;
-  border:1px solid #eadcb9 !important;
-  border-radius:16px !important;
+  max-width:1160px !important;
+  margin:0 auto 18px !important;
+  padding:13px 18px !important;
+  border:1px solid #eadfc6 !important;
+  border-radius:12px !important;
   background:#fffaf0 !important;
-  color:#79591f !important;
-  font-size:14px !important;
+  color:#775c28 !important;
+  font-size:12px !important;
   font-weight:700 !important;
+  text-align:left !important;
 }
 
+/* Action strip */
 #dashboard .quick-actions{
-  max-width:1180px !important;
+  max-width:1160px !important;
   margin:0 auto 22px !important;
-  padding:0 34px !important;
+  padding:0 28px !important;
   display:grid !important;
   grid-template-columns:1fr 1fr !important;
-  gap:14px !important;
+  gap:12px !important;
 }
-
 #dashboard .quick-actions a{
-  min-height:76px !important;
-  padding:18px 22px !important;
-  border-radius:16px !important;
-  font-size:17px !important;
-  font-weight:800 !important;
-  box-shadow:0 8px 22px rgba(20,50,42,.07) !important;
-}
-
-#dashboard .quick-out{background:#b94632 !important;color:#fff !important;border:1px solid #b94632 !important}
-#dashboard .quick-in{background:#fff !important;color:#087447 !important;border:2px solid #087447 !important}
-
-#dashboard .period-tabs{
-  max-width:1180px !important;
-  margin:0 auto !important;
-  padding:4px !important;
-  border:1px solid #dfe7e2 !important;
-  border-radius:14px !important;
-  background:#fff !important;
-  box-shadow:0 5px 18px rgba(20,50,42,.05) !important;
-}
-
-#dashboard .period{padding:12px !important;border-radius:10px !important;font-size:13px !important;font-weight:800 !important;color:#718078 !important}
-#dashboard .period.active{background:#087447 !important;color:#fff !important;box-shadow:none !important}
-
-#dashboard .cash-filter{display:flex !important;justify-content:center !important;gap:8px !important;margin:22px auto 18px !important}
-#dashboard .cash-filter-btn{padding:9px 16px !important;border:1px solid #dfe7e2 !important;border-radius:10px !important;background:#fff !important;color:#718078 !important;font-size:12px !important;font-weight:800 !important}
-#dashboard .cash-filter-btn.active{background:#b94632 !important;border-color:#b94632 !important;color:#fff !important}
-
-#dashboard .donut-panel{
-  max-width:1180px !important;
-  margin:0 auto 48px !important;
-  min-height:0 !important;
-  padding:10px 34px 0 !important;
+  min-height:62px !important;
+  padding:16px 20px !important;
+  border-radius:12px !important;
   display:flex !important;
-  flex-direction:row !important;
   align-items:center !important;
   justify-content:center !important;
-  gap:70px !important;
+  text-align:center !important;
+  text-decoration:none !important;
+  font-size:14px !important;
+  font-weight:800 !important;
+  box-shadow:none !important;
+}
+#dashboard .quick-in{
+  background:var(--dash-green) !important;
+  color:#fff !important;
+  border:1px solid var(--dash-green) !important;
+}
+#dashboard .quick-out{
+  background:#fff !important;
+  color:var(--dash-red) !important;
+  border:1px solid #edcbc4 !important;
 }
 
+/* Period navigation */
+#dashboard .period-tabs{
+  max-width:1160px !important;
+  margin:0 auto 14px !important;
+  padding:4px !important;
+  border:1px solid var(--dash-line) !important;
+  border-radius:11px !important;
+  background:#fff !important;
+  box-shadow:none !important;
+}
+#dashboard .period{
+  padding:10px 12px !important;
+  border:0 !important;
+  border-radius:8px !important;
+  color:#7a8780 !important;
+  background:transparent !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+}
+#dashboard .period.active{
+  background:#e9f3ee !important;
+  color:var(--dash-green) !important;
+  box-shadow:none !important;
+}
+
+/* Income / expense switch */
+#dashboard .cash-filter{
+  max-width:1160px !important;
+  margin:0 auto 16px !important;
+  padding:0 28px !important;
+  display:flex !important;
+  justify-content:flex-start !important;
+  gap:7px !important;
+}
+#dashboard .cash-filter-btn{
+  padding:8px 13px !important;
+  border:1px solid var(--dash-line) !important;
+  border-radius:9px !important;
+  background:#fff !important;
+  color:#7a8780 !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+}
+#dashboard .cash-filter-btn.active{
+  background:var(--dash-ink) !important;
+  border-color:var(--dash-ink) !important;
+  color:#fff !important;
+}
+
+/* Analytics area */
+#dashboard .donut-panel{
+  max-width:1160px !important;
+  margin:0 auto !important;
+  padding:20px 28px 0 !important;
+  min-height:300px !important;
+  display:grid !important;
+  grid-template-columns:360px minmax(0,1fr) !important;
+  align-items:center !important;
+  justify-content:initial !important;
+  gap:46px !important;
+}
 #dashboard .donut{
-  flex:0 0 auto !important;
-  width:280px !important;
-  height:280px !important;
+  width:300px !important;
+  height:300px !important;
+  margin:auto !important;
   border-radius:50% !important;
   box-shadow:none !important;
 }
-
-#dashboard .donut:after{width:188px !important;height:188px !important;background:#f6f8f7 !important}
-#dashboard .donut strong{font-size:32px !important}
-#dashboard .donut span{font-size:13px !important}
-#dashboard .donut-panel .categories{width:360px !important;max-width:100% !important;margin-top:0 !important}
-
+#dashboard .donut:after{width:205px !important;height:205px !important;background:var(--dash-bg) !important}
+#dashboard .donut strong{font-size:31px !important;color:var(--dash-ink) !important}
+#dashboard .donut span{font-size:11px !important;color:var(--dash-muted) !important}
+#dashboard .donut-panel .categories{
+  width:100% !important;
+  max-width:520px !important;
+  margin:0 !important;
+  padding:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:9px !important;
+}
 #dashboard .category-row{
   background:#fff !important;
-  border:1px solid #e5ece8 !important;
-  border-radius:12px !important;
-  padding:12px !important;
+  border:1px solid var(--dash-line) !important;
+  border-radius:11px !important;
+  padding:12px 14px !important;
   box-shadow:none !important;
 }
-
+#dashboard .category-row .fill{background:var(--dash-green) !important}
 #dashboard .category-row:hover{transform:none !important}
-#dashboard .category-row .fill{background:#087447 !important}
+
+/* Remove old visual effects */
+#dashboard .cash-inner,
+#dashboard .quick-actions a,
+#dashboard .period-tabs,
+#dashboard .category-row,
+#dashboard .donut{animation:none !important}
 
 @media(max-width:900px){
-  #dashboard .section-head{padding:36px 16px 20px !important}
-  #dashboard .section-head h2{font-size:32px !important}
-  #dashboard .cash-card{padding:0 16px !important}
-  #dashboard .cash-inner{min-height:0 !important;padding:26px 22px !important;border-radius:20px !important}
-  #dashboard .cash-inner>strong{font-size:42px !important}
-  #dashboard .cash-month{gap:24px !important}
-  #dashboard .cash-month b{font-size:18px !important}
-  #dashboard .budget-card{margin-left:16px !important;margin-right:16px !important}
-  #dashboard .quick-actions{padding:0 16px !important;gap:10px !important}
-  #dashboard .quick-actions a{min-height:70px !important;padding:15px 7px !important;font-size:14px !important;border-radius:14px !important}
-  #dashboard .period-tabs{margin-left:16px !important;margin-right:16px !important}
-  #dashboard .period{font-size:13px !important;padding:11px 4px !important}
-  #dashboard .donut-panel{padding:10px 16px 0 !important;flex-direction:column !important;gap:24px !important}
-  #dashboard .donut{width:260px !important;height:260px !important}
-  #dashboard .donut:after{width:174px !important;height:174px !important}
-  #dashboard .donut-panel .categories{width:100% !important}
+  #dashboard{padding-bottom:34px !important}
+  #dashboard .section-head{
+    padding:32px 16px 18px !important;
+    display:block !important;
+  }
+  #dashboard .section-head h2{font-size:32px !important;letter-spacing:-1.2px !important}
+  #dashboard .section-head p{font-size:12px !important}
+  #dashboard .section-head .btn{margin-top:15px !important;width:100% !important}
+
+  #dashboard .cash-card{padding:0 16px !important;margin-bottom:14px !important}
+  #dashboard .cash-inner{
+    min-height:0 !important;
+    padding:25px 20px 19px !important;
+    border-radius:18px !important;
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    grid-template-rows:auto auto auto !important;
+    column-gap:18px !important;
+  }
+  #dashboard .cash-inner:before{width:5px !important}
+  #dashboard .cash-label{grid-column:1 / -1 !important}
+  #dashboard .cash-inner>strong{
+    grid-column:1 / -1 !important;
+    grid-row:2 !important;
+    font-size:39px !important;
+    letter-spacing:-1.8px !important;
+    margin:12px 0 16px !important;
+  }
+  #dashboard .cash-month{
+    grid-column:1 / -1 !important;
+    grid-row:3 !important;
+    padding:0 !important;
+    border-left:0 !important;
+    grid-template-columns:1fr 1fr !important;
+    display:grid !important;
+  }
+  #dashboard .cash-month div{padding:9px 0 !important;border-bottom:0 !important}
+  #dashboard .cash-month div:nth-child(2){padding-left:14px !important;border-left:1px solid var(--dash-line) !important}
+  #dashboard .cash-month b{font-size:17px !important}
+  #dashboard .opening-cash{grid-column:1 / -1 !important;grid-row:4 !important;margin-top:10px !important}
+
+  #dashboard .budget-card{margin:0 16px 14px !important;font-size:11px !important}
+  #dashboard .quick-actions{padding:0 16px !important;gap:9px !important;margin-bottom:16px !important}
+  #dashboard .quick-actions a{min-height:56px !important;padding:13px 7px !important;font-size:12px !important;border-radius:11px !important}
+  #dashboard .period-tabs{margin:0 16px 12px !important}
+  #dashboard .period{font-size:11px !important;padding:10px 4px !important}
+  #dashboard .cash-filter{padding:0 16px !important;margin-bottom:12px !important}
+  #dashboard .cash-filter-btn{font-size:10px !important;padding:7px 11px !important}
+  #dashboard .donut-panel{
+    margin:0 !important;
+    padding:16px 16px 0 !important;
+    grid-template-columns:1fr !important;
+    gap:20px !important;
+  }
+  #dashboard .donut{width:245px !important;height:245px !important}
+  #dashboard .donut:after{width:166px !important;height:166px !important}
+  #dashboard .donut-panel .categories{max-width:none !important}
+}
+
+@media(max-width:420px){
+  #dashboard .cash-inner>strong{font-size:34px !important}
+  #dashboard .cash-month b{font-size:15px !important}
+  #dashboard .opening-cash{font-size:10px !important}
 }
 
 @media(prefers-reduced-motion:reduce){#dashboard *{animation:none !important;transition:none !important}}

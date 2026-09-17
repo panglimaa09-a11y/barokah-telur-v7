@@ -1,6 +1,16 @@
 (() => {
   "use strict";
 
+  // Force-load the dashboard redesign after the legacy inline CSS.
+  // This makes the redesign independent of service-worker HTML injection.
+  if (!document.querySelector('link[data-dashboard-v5]')) {
+    const style = document.createElement("link");
+    style.rel = "stylesheet";
+    style.href = "dashboard-final.css?v=20260917-8";
+    style.dataset.dashboardV5 = "true";
+    document.head.appendChild(style);
+  }
+
   const toggle = document.getElementById("navToggle");
   const topbar = document.querySelector(".topbar");
   const nav = document.querySelector(".topbar nav");

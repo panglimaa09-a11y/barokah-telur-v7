@@ -1,0 +1,239 @@
+/* CatatanBarokah Dashboard Final
+   Replaces the previous 3D / anti-gravity dashboard styling.
+*/
+
+#dashboard{
+  background:#f6f8f7 !important;
+  min-height:calc(100vh - 72px) !important;
+  padding-bottom:48px !important;
+  perspective:none !important;
+}
+
+#dashboard *{
+  animation:none !important;
+  transform:none !important;
+  transform-style:flat !important;
+}
+
+#dashboard .section-head{
+  max-width:1180px !important;
+  padding:54px 34px 24px !important;
+}
+
+#dashboard .section-head h2{
+  font-family:'DM Sans',system-ui,sans-serif !important;
+  font-size:38px !important;
+  line-height:1.1 !important;
+  font-weight:800 !important;
+  letter-spacing:-1.5px !important;
+  color:#16382e !important;
+  text-shadow:none !important;
+}
+
+#dashboard .section-head p{color:#718078 !important}
+
+#dashboard .cash-card{
+  max-width:1180px !important;
+  margin:0 auto 20px !important;
+  padding:0 34px !important;
+}
+
+#dashboard .cash-inner{
+  position:relative !important;
+  overflow:hidden !important;
+  min-height:285px !important;
+  padding:34px 38px !important;
+  border:0 !important;
+  border-radius:24px !important;
+  background:linear-gradient(135deg,#0d7650 0%,#075d40 55%,#064a35 100%) !important;
+  box-shadow:0 18px 40px rgba(5,74,51,.18) !important;
+}
+
+#dashboard .cash-inner:before{
+  content:"" !important;
+  position:absolute !important;
+  inset:auto -80px -120px auto !important;
+  width:300px !important;
+  height:300px !important;
+  border:0 !important;
+  border-radius:50% !important;
+  background:rgba(255,255,255,.06) !important;
+  pointer-events:none !important;
+}
+
+#dashboard .cash-inner:after{
+  content:"" !important;
+  position:absolute !important;
+  width:170px !important;
+  height:170px !important;
+  right:80px !important;
+  top:-90px !important;
+  border-radius:50% !important;
+  background:rgba(255,255,255,.05) !important;
+  pointer-events:none !important;
+}
+
+#dashboard .cash-label{
+  position:relative !important;
+  z-index:2 !important;
+  display:block !important;
+  width:max-content !important;
+  font-size:12px !important;
+  line-height:1 !important;
+  letter-spacing:.14em !important;
+  text-transform:uppercase !important;
+  font-weight:800 !important;
+  color:rgba(255,255,255,.72) !important;
+  opacity:1 !important;
+}
+
+#dashboard .cash-label:after{
+  content:none !important;
+}
+
+#dashboard .cash-inner>strong{
+  position:relative !important;
+  z-index:2 !important;
+  display:block !important;
+  margin:16px 0 26px !important;
+  font-size:56px !important;
+  line-height:1 !important;
+  letter-spacing:-2px !important;
+  color:#fff !important;
+  text-shadow:none !important;
+}
+
+#dashboard .cash-month{
+  position:relative !important;
+  z-index:2 !important;
+  display:flex !important;
+  gap:48px !important;
+}
+
+#dashboard .cash-month div{display:flex !important;flex-direction:column !important;gap:4px !important}
+#dashboard .cash-month span{font-size:12px !important;color:rgba(255,255,255,.68) !important}
+#dashboard .cash-month b{font-size:20px !important;color:#bdebd3 !important}
+#dashboard .cash-month div:nth-child(2) b{color:#ffd0c3 !important}
+
+#dashboard .opening-cash{
+  position:relative !important;
+  z-index:2 !important;
+  margin-top:22px !important;
+  padding:11px 15px !important;
+  width:max-content !important;
+  max-width:100% !important;
+  background:rgba(255,255,255,.09) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  border-radius:11px !important;
+  font-size:12px !important;
+  color:rgba(255,255,255,.76) !important;
+}
+
+#dashboard .opening-cash b{font-size:14px !important;color:#fff !important}
+
+#dashboard .budget-card{
+  max-width:1180px !important;
+  margin:0 auto 20px !important;
+  padding:16px 22px !important;
+  border:1px solid #eadcb9 !important;
+  border-radius:16px !important;
+  background:#fffaf0 !important;
+  color:#79591f !important;
+  font-size:14px !important;
+  font-weight:700 !important;
+}
+
+#dashboard .quick-actions{
+  max-width:1180px !important;
+  margin:0 auto 22px !important;
+  padding:0 34px !important;
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:14px !important;
+}
+
+#dashboard .quick-actions a{
+  min-height:76px !important;
+  padding:18px 22px !important;
+  border-radius:16px !important;
+  font-size:17px !important;
+  font-weight:800 !important;
+  box-shadow:0 8px 22px rgba(20,50,42,.07) !important;
+}
+
+#dashboard .quick-out{background:#b94632 !important;color:#fff !important;border:1px solid #b94632 !important}
+#dashboard .quick-in{background:#fff !important;color:#087447 !important;border:2px solid #087447 !important}
+
+#dashboard .period-tabs{
+  max-width:1180px !important;
+  margin:0 auto !important;
+  padding:4px !important;
+  border:1px solid #dfe7e2 !important;
+  border-radius:14px !important;
+  background:#fff !important;
+  box-shadow:0 5px 18px rgba(20,50,42,.05) !important;
+}
+
+#dashboard .period{padding:12px !important;border-radius:10px !important;font-size:13px !important;font-weight:800 !important;color:#718078 !important}
+#dashboard .period.active{background:#087447 !important;color:#fff !important;box-shadow:none !important}
+
+#dashboard .cash-filter{display:flex !important;justify-content:center !important;gap:8px !important;margin:22px auto 18px !important}
+#dashboard .cash-filter-btn{padding:9px 16px !important;border:1px solid #dfe7e2 !important;border-radius:10px !important;background:#fff !important;color:#718078 !important;font-size:12px !important;font-weight:800 !important}
+#dashboard .cash-filter-btn.active{background:#b94632 !important;border-color:#b94632 !important;color:#fff !important}
+
+#dashboard .donut-panel{
+  max-width:1180px !important;
+  margin:0 auto 48px !important;
+  min-height:0 !important;
+  padding:10px 34px 0 !important;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:70px !important;
+}
+
+#dashboard .donut{
+  flex:0 0 auto !important;
+  width:280px !important;
+  height:280px !important;
+  border-radius:50% !important;
+  box-shadow:none !important;
+}
+
+#dashboard .donut:after{width:188px !important;height:188px !important;background:#f6f8f7 !important}
+#dashboard .donut strong{font-size:32px !important}
+#dashboard .donut span{font-size:13px !important}
+#dashboard .donut-panel .categories{width:360px !important;max-width:100% !important;margin-top:0 !important}
+
+#dashboard .category-row{
+  background:#fff !important;
+  border:1px solid #e5ece8 !important;
+  border-radius:12px !important;
+  padding:12px !important;
+  box-shadow:none !important;
+}
+
+#dashboard .category-row:hover{transform:none !important}
+#dashboard .category-row .fill{background:#087447 !important}
+
+@media(max-width:900px){
+  #dashboard .section-head{padding:36px 16px 20px !important}
+  #dashboard .section-head h2{font-size:32px !important}
+  #dashboard .cash-card{padding:0 16px !important}
+  #dashboard .cash-inner{min-height:0 !important;padding:26px 22px !important;border-radius:20px !important}
+  #dashboard .cash-inner>strong{font-size:42px !important}
+  #dashboard .cash-month{gap:24px !important}
+  #dashboard .cash-month b{font-size:18px !important}
+  #dashboard .budget-card{margin-left:16px !important;margin-right:16px !important}
+  #dashboard .quick-actions{padding:0 16px !important;gap:10px !important}
+  #dashboard .quick-actions a{min-height:70px !important;padding:15px 7px !important;font-size:14px !important;border-radius:14px !important}
+  #dashboard .period-tabs{margin-left:16px !important;margin-right:16px !important}
+  #dashboard .period{font-size:13px !important;padding:11px 4px !important}
+  #dashboard .donut-panel{padding:10px 16px 0 !important;flex-direction:column !important;gap:24px !important}
+  #dashboard .donut{width:260px !important;height:260px !important}
+  #dashboard .donut:after{width:174px !important;height:174px !important}
+  #dashboard .donut-panel .categories{width:100% !important}
+}
+
+@media(prefers-reduced-motion:reduce){#dashboard *{animation:none !important;transition:none !important}}

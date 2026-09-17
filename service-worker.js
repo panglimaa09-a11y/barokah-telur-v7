@@ -1,4 +1,4 @@
-const CACHE = "catatanbarokah-v9";
+const CACHE = "catatanbarokah-v10";
 const ASSETS = ["./", "./index.html", "./styles.css", "./dashboard-final.css", "./app.js", "./manifest.json", "./icons/icon.svg"];
 
 self.addEventListener("install", event => {
@@ -25,12 +25,15 @@ self.addEventListener("fetch", event => {
           const html = await response.clone().text();
           const injected = html.replace(
             /<\/head>/i,
-            '<link rel="stylesheet" href="./dashboard-final.css?v=20260917-5"><\/head>'
+            '<link rel="stylesheet" href="./dashboard-final.css?v=20260917-6"><\/head>'
           );
+          const headers = new Headers(response.headers);
+          headers.delete("content-length");
+          headers.delete("content-encoding");
           const finalResponse = new Response(injected, {
             status: response.status,
             statusText: response.statusText,
-            headers: response.headers
+            headers
           });
           const copy = finalResponse.clone();
           caches.open(CACHE).then(cache => cache.put(event.request, copy));

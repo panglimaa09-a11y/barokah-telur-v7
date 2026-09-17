@@ -20,17 +20,16 @@
     toggle.setAttribute("aria-expanded", String(open));
   });
 
-  nav.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => closeMenu());
-  });
+  nav.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
+  document.addEventListener("click", (event) => { if (!topbar.contains(event.target)) closeMenu(); });
+  window.addEventListener("resize", () => { if (window.innerWidth > 900) closeMenu(); });
+  window.addEventListener("hashchange", closeMenu);
 
-  document.addEventListener("click", (event) => {
-    if (!topbar.contains(event.target)) closeMenu();
-  });
-
-  window.addEventListener("resize", () => {
-    if (window.innerWidth > 900) closeMenu();
-  });
-
-  window.addEventListener("hashchange", () => closeMenu());
+  // Load the opening-cash sync after the navigation code so it also works on cached PWAs.
+  if (!document.querySelector('script[data-opening-balance]')) {
+    const script = document.createElement("script");
+    script.src = "opening-balance.js?v=20260917-1";
+    script.dataset.openingBalance = "true";
+    document.body.appendChild(script);
+  }
 })();

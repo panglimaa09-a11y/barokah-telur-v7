@@ -6,7 +6,6 @@
   const LOCAL_KEY = "cbt_preview_tx";
 
   const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
-  let currentUser = null;
   let cloudEnabled = !!supabaseClient;
   let transactions = loadLocal();
   let activeType = "masuk";
@@ -35,7 +34,7 @@
     return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
-  function normalizeLocal(item) {
+  function normalize(item) {
     return {
       id: item.id || newId(),
       d: item.d || item.transaction_date || today(),
@@ -49,7 +48,7 @@
   function loadLocal() {
     try {
       const data = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-      return Array.isArray(data) ? data.map(normalizeLocal).filter(x => x.a > 0) : [];
+      return Array.isArray(data) ? data.map(normalize).filter(x => x.a > 0) : [];
     } catch { return []; }
   }
 
@@ -66,11 +65,21 @@
     toast.timer = setTimeout(() => el.classList.remove("show"), 2800);
   }
 
+  async function cloudLoad() {
+    if (!cloudEnabled) return null;
+    const { data, error } = await supabaseClient
+      .from("transactions")
+      .select("id,type,amount,category,description,transaction_date,created_at")
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(normalize);
+  }
+
   async function cloudInsert(tx) {
-    if (!cloudEnabled || !currentUser) return false;
+    if (!cloudEnabled) return;
     const { error } = await supabaseClient.from("transactions").insert({
       id: tx.id,
-      user_id: currentUser.id,
       type: tx.t,
       amount: tx.a,
       category: tx.c,
@@ -78,86 +87,57 @@
       transaction_date: tx.d
     });
     if (error) throw error;
-    return true;
   }
 
   async function cloudUpdate(tx) {
-    if (!cloudEnabled || !currentUser) return false;
+    if (!cloudEnabled) return;
     const { error } = await supabaseClient.from("transactions").update({
       type: tx.t,
       amount: tx.a,
       category: tx.c,
       description: tx.x,
       transaction_date: tx.d
-    }).eq("id", tx.id).eq("user_id", currentUser.id);
+    }).eq("id", tx.id);
     if (error) throw error;
-    return true;
   }
 
   async function cloudDelete(id) {
-    if (!cloudEnabled || !currentUser) return false;
-    const { error } = await supabaseClient.from("transactions").delete().eq("id", id).eq("user_id", currentUser.id);
+    if (!cloudEnabled) return;
+    const { error } = await supabaseClient.from("transactions").delete().eq("id", id);
     if (error) throw error;
-    return true;
-  }
-
-  async function cloudLoad() {
-    if (!cloudEnabled || !currentUser) return [];
-    const { data, error } = await supabaseClient.from("transactions")
-      .select("id,user_id,type,amount,category,description,transaction_date,created_at")
-      .eq("user_id", currentUser.id)
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data || []).map(normalizeLocal);
   }
 
   async function initializeCloud() {
-    if (!supabaseClient) return;
-
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-    if (sessionError) throw sessionError;
-
-    if (sessionData.session?.user) {
-      currentUser = sessionData.session.user;
-    } else {
-      const { data, error } = await supabaseClient.auth.signInAnonymously();
-      if (error) throw error;
-      currentUser = data.user;
-    }
-
     const remote = await cloudLoad();
+    if (remote === null) return;
 
-    // First installation: migrate old localStorage records to Supabase.
+    // Migrate old browser-only records once if the shared database is empty.
     if (!remote.length && transactions.length) {
       for (const tx of transactions) {
-        try { await cloudInsert(tx); } catch (e) { console.warn("Migration gagal", e); }
+        try { await cloudInsert(tx); } catch (e) { console.warn("Migrasi lokal gagal:", e); }
       }
-      transactions = await cloudLoad();
+      transactions = (await cloudLoad()) || [];
     } else {
       transactions = remote;
     }
-
     saveLocal();
   }
 
   function setBootStatus() {
     const brand = document.querySelector(".brand small");
-    if (brand) brand.textContent = cloudEnabled && currentUser ? "Telur · Cloud" : "Telur · Lokal";
+    if (brand) brand.textContent = cloudEnabled ? "Telur · Cloud" : "Telur · Lokal";
   }
 
   async function boot() {
     try {
-      if (cloudEnabled) {
-        await initializeCloud();
-      }
+      if (!supabaseClient) throw new Error("Supabase client tidak tersedia");
+      await initializeCloud();
     } catch (error) {
       console.error("Supabase gagal:", error);
       cloudEnabled = false;
       setBootStatus();
       toast("⚠ Supabase belum aktif. Data tetap disimpan lokal.");
     }
-
     booting = false;
     setBootStatus();
     renderTransactions();
@@ -204,15 +184,14 @@
       if (editingId) {
         const index = transactions.findIndex(item => String(item.id) === String(editingId));
         if (index === -1) throw new Error("Transaksi tidak ditemukan");
-        if (cloudEnabled) await cloudUpdate(tx);
+        await cloudUpdate(tx);
         transactions[index] = tx;
         toast("✅ Transaksi berhasil diperbarui");
       } else {
-        if (cloudEnabled) await cloudInsert(tx);
+        await cloudInsert(tx);
         transactions.unshift(tx);
         toast(`✅ ${activeType === "masuk" ? "Uang masuk" : "Uang keluar"} ${rupiah(amount)} tersimpan`);
       }
-
       saveLocal();
       cancelEdit(false);
       renderTransactions();
@@ -228,7 +207,6 @@
   function startEdit(id) {
     const transaction = transactions.find(item => String(item.id) === String(id));
     if (!transaction) return toast("⚠ Transaksi tidak ditemukan");
-
     editingId = transaction.id;
     activeType = transaction.t;
     $$(".seg").forEach(button => button.classList.toggle("active", button.dataset.type === activeType));
@@ -236,10 +214,8 @@
     $("#category").value = transaction.c || "";
     $("#description").value = transaction.x || "";
     $("#date").value = transaction.d || today();
-
     const submit = $('#txForm button[type="submit"]');
     if (submit) submit.textContent = "💾 Simpan Perubahan";
-
     let cancel = $("#cancelEdit");
     if (!cancel) {
       cancel = document.createElement("button");
@@ -294,23 +270,19 @@
       list.innerHTML = '<div class="empty">Belum ada transaksi.</div>';
       return;
     }
-
     list.innerHTML = data.map(transaction => {
       const isIn = transaction.t === "masuk";
       const date = new Date(transaction.d + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
       return `<div class="tx ${isIn ? "in" : "out"}"><div class="tx-icon">${isIn ? "↗" : "↘"}</div><div class="tx-main"><b>${esc(transaction.x || transaction.c)}</b><small>${esc(transaction.c || "Lain-lain")} • ${esc(date)}</small><span class="tx-type">${isIn ? "UANG MASUK" : "UANG KELUAR"}</span></div><div class="tx-amount ${isIn ? "positive" : "negative"}">${isIn ? "+" : "−"} ${rupiah(transaction.a)}</div><div class="tx-actions"><button type="button" class="edit" data-edit-id="${esc(transaction.id)}" title="Edit transaksi">✏️</button><button type="button" class="delete" data-delete-id="${esc(transaction.id)}" title="Hapus transaksi">🗑️</button></div></div>`;
     }).join("");
-
     $$(".edit").forEach(button => button.addEventListener("click", () => startEdit(button.dataset.editId)));
     $$(".delete").forEach(button => button.addEventListener("click", async () => {
       const id = button.dataset.deleteId;
       const transaction = transactions.find(item => String(item.id) === String(id));
-      if (!transaction) return;
-      if (!confirm(`Hapus transaksi ${rupiah(transaction.a)}?`)) return;
-
+      if (!transaction || !confirm(`Hapus transaksi ${rupiah(transaction.a)}?`)) return;
       button.disabled = true;
       try {
-        if (cloudEnabled) await cloudDelete(id);
+        await cloudDelete(id);
         transactions = transactions.filter(item => String(item.id) !== String(id));
         saveLocal();
         renderTransactions();
@@ -348,25 +320,24 @@
       data.push({ label: date.toLocaleDateString("id-ID", { weekday: "short" }), masuk, keluar });
     }
     const max = Math.max(1, ...data.flatMap(item => [item.masuk, item.keluar]));
-    chart.innerHTML = data.map(item => `<div class="bar-day"><div class="bar" title="Masuk ${rupiah(item.masuk)}" style="height:${Math.max(3, item.masuk / max * 90)}%"></div><div class="bar out" title="Keluar ${rupiah(item.keluar)}" style="height:${Math.max(3, item.keluar / max * 90)}%"></div><label>${esc(item.label)}</label></div>`).join("");
+    chart.innerHTML = data.map(item => `<div class="bar-day"><div class="bars"><div class="bar masuk" title="Masuk ${rupiah(item.masuk)}" style="height:${Math.max(3, item.masuk / max * 90)}%"></div><div class="bar keluar" title="Keluar ${rupiah(item.keluar)}" style="height:${Math.max(3, item.keluar / max * 90)}%"></div></div><small>${esc(item.label)}</small></div>`).join("");
   }
 
   function renderCategories() {
-    const chart = $("#categoryChart");
-    if (!chart) return;
-    const categories = {};
-    transactions.filter(item => item.t === "keluar").forEach(item => { categories[item.c] = (categories[item.c] || 0) + Number(item.a || 0); });
-    const rows = Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    if (!rows.length) {
-      chart.innerHTML = '<div class="empty">Belum ada pengeluaran.</div>';
-      return;
-    }
-    const max = rows[0][1] || 1;
-    chart.innerHTML = rows.map(([name, value]) => `<div class="cat-row"><span class="cat-name">${esc(name)}</span><div class="track"><i style="width:${value / max * 100}%"></i></div><span class="cat-value">${rupiah(value)}</span></div>`).join("");
+    const box = $("#categoryChart");
+    if (!box) return;
+    const map = {};
+    transactions.filter(item => item.t === "keluar").forEach(item => { map[item.c] = (map[item.c] || 0) + Number(item.a || 0); });
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) { box.innerHTML = '<div class="empty">Belum ada pengeluaran.</div>'; return; }
+    const total = entries.reduce((sum, [, value]) => sum + value, 0);
+    box.innerHTML = entries.map(([category, value]) => `<div class="cat-row"><div><b>${esc(category)}</b><span>${rupiah(value)}</span></div><div class="cat-track"><i style="width:${Math.max(3, value / total * 100)}%"></i></div></div>`).join("");
   }
 
-  const initial = location.hash.slice(1);
-  go(["home", "dashboard", "transactions"].includes(initial) ? initial : "home");
+  const navToggle = $("#navToggle");
+  navToggle?.addEventListener("click", () => $("nav")?.classList.toggle("open"));
+
+  if (location.hash) go(location.hash.slice(1));
   boot();
 
   if ("serviceWorker" in navigator) {

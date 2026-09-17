@@ -1,346 +1,47 @@
 (() => {
   "use strict";
-
   const SUPABASE_URL = "https://ouyxhcmjwrqfmlqzuagj.supabase.co";
   const SUPABASE_KEY = "sb_publishable_NW2jRbkdYVN1IxLqeIv2mA_sltgk_QZ";
   const LOCAL_KEY = "cbt_preview_tx";
-
   const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
   let cloudEnabled = !!supabaseClient;
   let transactions = loadLocal();
-  let activeType = "masuk";
-  let activeFilter = "semua";
-  let editingId = null;
-  let booting = true;
-
-  const $ = s => document.querySelector(s);
-  const $$ = s => [...document.querySelectorAll(s)];
-
-  function rupiah(value) {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(value) || 0);
-  }
-
-  function esc(value) {
-    return String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[c]));
-  }
-
-  function today() {
-    const d = new Date();
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
-  }
-
-  function newId() {
-    return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
-
-  function normalize(item) {
-    return {
-      id: item.id || newId(),
-      d: item.d || item.transaction_date || today(),
-      t: item.t === "keluar" || item.type === "keluar" ? "keluar" : "masuk",
-      a: Number(item.a ?? item.amount) || 0,
-      c: String(item.c ?? item.category ?? "Lain-lain"),
-      x: String(item.x ?? item.description ?? "")
-    };
-  }
-
-  function loadLocal() {
-    try {
-      const data = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-      return Array.isArray(data) ? data.map(normalize).filter(x => x.a > 0) : [];
-    } catch { return []; }
-  }
-
-  function saveLocal() {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(transactions));
-  }
-
-  function toast(message) {
-    const el = $("#toast");
-    if (!el) return;
-    el.textContent = message;
-    el.classList.add("show");
-    clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove("show"), 2800);
-  }
-
-  async function cloudLoad() {
-    if (!cloudEnabled) return null;
-    const { data, error } = await supabaseClient
-      .from("transactions")
-      .select("id,type,amount,category,description,transaction_date,created_at")
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data || []).map(normalize);
-  }
-
-  async function cloudInsert(tx) {
-    if (!cloudEnabled) return;
-    const { error } = await supabaseClient.from("transactions").insert({
-      id: tx.id,
-      type: tx.t,
-      amount: tx.a,
-      category: tx.c,
-      description: tx.x,
-      transaction_date: tx.d
-    });
-    if (error) throw error;
-  }
-
-  async function cloudUpdate(tx) {
-    if (!cloudEnabled) return;
-    const { error } = await supabaseClient.from("transactions").update({
-      type: tx.t,
-      amount: tx.a,
-      category: tx.c,
-      description: tx.x,
-      transaction_date: tx.d
-    }).eq("id", tx.id);
-    if (error) throw error;
-  }
-
-  async function cloudDelete(id) {
-    if (!cloudEnabled) return;
-    const { error } = await supabaseClient.from("transactions").delete().eq("id", id);
-    if (error) throw error;
-  }
-
-  async function initializeCloud() {
-    const remote = await cloudLoad();
-    if (remote === null) return;
-
-    // Migrate old browser-only records once if the shared database is empty.
-    if (!remote.length && transactions.length) {
-      for (const tx of transactions) {
-        try { await cloudInsert(tx); } catch (e) { console.warn("Migrasi lokal gagal:", e); }
-      }
-      transactions = (await cloudLoad()) || [];
-    } else {
-      transactions = remote;
-    }
-    saveLocal();
-  }
-
-  function setBootStatus() {
-    const brand = document.querySelector(".brand small");
-    if (brand) brand.textContent = cloudEnabled ? "Telur · Cloud" : "Telur · Lokal";
-  }
-
-  async function boot() {
-    try {
-      if (!supabaseClient) throw new Error("Supabase client tidak tersedia");
-      await initializeCloud();
-    } catch (error) {
-      console.error("Supabase gagal:", error);
-      cloudEnabled = false;
-      setBootStatus();
-      toast("⚠ Supabase belum aktif. Data tetap disimpan lokal.");
-    }
-    booting = false;
-    setBootStatus();
-    renderTransactions();
-    renderDashboard();
-  }
-
-  function go(page) {
-    $$(".page").forEach(el => el.classList.toggle("active", el.id === page));
-    if (page === "dashboard") renderDashboard();
-    if (page === "transactions") renderTransactions();
-    if (location.hash !== "#" + page) history.replaceState(null, "", "#" + page);
-  }
-
-  $$('[data-page]').forEach(el => el.addEventListener("click", e => {
-    e.preventDefault();
-    go(el.dataset.page);
-  }));
-
-  $$(".seg").forEach(button => button.addEventListener("click", () => {
-    $$(".seg").forEach(item => item.classList.remove("active"));
-    button.classList.add("active");
-    activeType = button.dataset.type;
-  }));
-
-  if ($("#date")) $("#date").value = today();
-
-  $("#txForm")?.addEventListener("submit", async event => {
-    event.preventDefault();
-    if (booting) return toast("⏳ Menyiapkan database...");
-
-    const amount = Number($("#amount")?.value);
-    const category = $("#category")?.value.trim() || "Lain-lain";
-    const description = $("#description")?.value.trim() || "";
-    const date = $("#date")?.value;
-
-    if (!Number.isFinite(amount) || amount <= 0) return toast("⚠ Isi nominal lebih dari 0");
-    if (!date || Number.isNaN(Date.parse(date))) return toast("⚠ Tanggal tidak valid");
-
-    const tx = { id: editingId || newId(), d: date, t: activeType, a: amount, c: category, x: description };
-    const button = event.submitter;
-    if (button) button.disabled = true;
-
-    try {
-      if (editingId) {
-        const index = transactions.findIndex(item => String(item.id) === String(editingId));
-        if (index === -1) throw new Error("Transaksi tidak ditemukan");
-        await cloudUpdate(tx);
-        transactions[index] = tx;
-        toast("✅ Transaksi berhasil diperbarui");
-      } else {
-        await cloudInsert(tx);
-        transactions.unshift(tx);
-        toast(`✅ ${activeType === "masuk" ? "Uang masuk" : "Uang keluar"} ${rupiah(amount)} tersimpan`);
-      }
-      saveLocal();
-      cancelEdit(false);
-      renderTransactions();
-      renderDashboard();
-    } catch (error) {
-      console.error(error);
-      toast(`❌ Gagal menyimpan: ${error.message || "periksa Supabase"}`);
-    } finally {
-      if (button) button.disabled = false;
-    }
-  });
-
-  function startEdit(id) {
-    const transaction = transactions.find(item => String(item.id) === String(id));
-    if (!transaction) return toast("⚠ Transaksi tidak ditemukan");
-    editingId = transaction.id;
-    activeType = transaction.t;
-    $$(".seg").forEach(button => button.classList.toggle("active", button.dataset.type === activeType));
-    $("#amount").value = transaction.a;
-    $("#category").value = transaction.c || "";
-    $("#description").value = transaction.x || "";
-    $("#date").value = transaction.d || today();
-    const submit = $('#txForm button[type="submit"]');
-    if (submit) submit.textContent = "💾 Simpan Perubahan";
-    let cancel = $("#cancelEdit");
-    if (!cancel) {
-      cancel = document.createElement("button");
-      cancel.type = "button";
-      cancel.id = "cancelEdit";
-      cancel.className = "btn secondary";
-      cancel.textContent = "Batal Edit";
-      cancel.addEventListener("click", () => cancelEdit());
-      submit.parentElement.appendChild(cancel);
-    }
-    cancel.style.display = "inline-flex";
-    go("transactions");
-    setTimeout(() => $("#amount")?.focus(), 100);
-    toast("✏️ Mode edit aktif");
-  }
-
-  function cancelEdit(showMessage = true) {
-    editingId = null;
-    $("#txForm")?.reset();
-    if ($("#date")) $("#date").value = today();
-    activeType = "masuk";
-    $$(".seg").forEach(button => button.classList.toggle("active", button.dataset.type === "masuk"));
-    const submit = $('#txForm button[type="submit"]');
-    if (submit) submit.textContent = "Simpan Transaksi";
-    $("#cancelEdit")?.remove();
-    if (showMessage) toast("✖ Edit dibatalkan");
-  }
-
-  $$(".filter").forEach(button => button.addEventListener("click", () => {
-    $$(".filter").forEach(item => item.classList.remove("active"));
-    button.classList.add("active");
-    activeFilter = button.dataset.filter;
-    renderTransactions();
-  }));
-
-  $("#search")?.addEventListener("input", renderTransactions);
-
-  function filteredTransactions() {
-    const query = $("#search")?.value.trim().toLowerCase() || "";
-    return transactions.filter(transaction => {
-      const typeMatch = activeFilter === "semua" || transaction.t === activeFilter;
-      const searchMatch = !query || [transaction.c, transaction.x, transaction.a].some(value => String(value ?? "").toLowerCase().includes(query));
-      return typeMatch && searchMatch;
-    });
-  }
-
-  function renderTransactions() {
-    const list = $("#txList");
-    if (!list) return;
-    const data = filteredTransactions();
-    if (!data.length) {
-      list.innerHTML = '<div class="empty">Belum ada transaksi.</div>';
-      return;
-    }
-    list.innerHTML = data.map(transaction => {
-      const isIn = transaction.t === "masuk";
-      const date = new Date(transaction.d + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-      return `<div class="tx ${isIn ? "in" : "out"}"><div class="tx-icon">${isIn ? "↗" : "↘"}</div><div class="tx-main"><b>${esc(transaction.x || transaction.c)}</b><small>${esc(transaction.c || "Lain-lain")} • ${esc(date)}</small><span class="tx-type">${isIn ? "UANG MASUK" : "UANG KELUAR"}</span></div><div class="tx-amount ${isIn ? "positive" : "negative"}">${isIn ? "+" : "−"} ${rupiah(transaction.a)}</div><div class="tx-actions"><button type="button" class="edit" data-edit-id="${esc(transaction.id)}" title="Edit transaksi">✏️</button><button type="button" class="delete" data-delete-id="${esc(transaction.id)}" title="Hapus transaksi">🗑️</button></div></div>`;
-    }).join("");
-    $$(".edit").forEach(button => button.addEventListener("click", () => startEdit(button.dataset.editId)));
-    $$(".delete").forEach(button => button.addEventListener("click", async () => {
-      const id = button.dataset.deleteId;
-      const transaction = transactions.find(item => String(item.id) === String(id));
-      if (!transaction || !confirm(`Hapus transaksi ${rupiah(transaction.a)}?`)) return;
-      button.disabled = true;
-      try {
-        await cloudDelete(id);
-        transactions = transactions.filter(item => String(item.id) !== String(id));
-        saveLocal();
-        renderTransactions();
-        renderDashboard();
-        toast("🗑️ Transaksi dihapus");
-      } catch (error) {
-        console.error(error);
-        toast(`❌ Gagal menghapus: ${error.message || "periksa Supabase"}`);
-        button.disabled = false;
-      }
-    }));
-  }
-
-  function renderDashboard() {
-    const income = transactions.filter(item => item.t === "masuk").reduce((sum, item) => sum + Number(item.a || 0), 0);
-    const expense = transactions.filter(item => item.t === "keluar").reduce((sum, item) => sum + Number(item.a || 0), 0);
-    if ($("#income")) $("#income").textContent = rupiah(income);
-    if ($("#expense")) $("#expense").textContent = rupiah(expense);
-    if ($("#balance")) $("#balance").textContent = rupiah(income - expense);
-    renderCashChart();
-    renderCategories();
-  }
-
-  function renderCashChart() {
-    const chart = $("#cashChart");
-    if (!chart) return;
-    const data = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() - i);
-      const key = date.toISOString().slice(0, 10);
-      const masuk = transactions.filter(item => item.d === key && item.t === "masuk").reduce((sum, item) => sum + Number(item.a || 0), 0);
-      const keluar = transactions.filter(item => item.d === key && item.t === "keluar").reduce((sum, item) => sum + Number(item.a || 0), 0);
-      data.push({ label: date.toLocaleDateString("id-ID", { weekday: "short" }), masuk, keluar });
-    }
-    const max = Math.max(1, ...data.flatMap(item => [item.masuk, item.keluar]));
-    chart.innerHTML = data.map(item => `<div class="bar-day"><div class="bars"><div class="bar masuk" title="Masuk ${rupiah(item.masuk)}" style="height:${Math.max(3, item.masuk / max * 90)}%"></div><div class="bar keluar" title="Keluar ${rupiah(item.keluar)}" style="height:${Math.max(3, item.keluar / max * 90)}%"></div></div><small>${esc(item.label)}</small></div>`).join("");
-  }
-
-  function renderCategories() {
-    const box = $("#categoryChart");
-    if (!box) return;
-    const map = {};
-    transactions.filter(item => item.t === "keluar").forEach(item => { map[item.c] = (map[item.c] || 0) + Number(item.a || 0); });
-    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    if (!entries.length) { box.innerHTML = '<div class="empty">Belum ada pengeluaran.</div>'; return; }
-    const total = entries.reduce((sum, [, value]) => sum + value, 0);
-    box.innerHTML = entries.map(([category, value]) => `<div class="cat-row"><div><b>${esc(category)}</b><span>${rupiah(value)}</span></div><div class="cat-track"><i style="width:${Math.max(3, value / total * 100)}%"></i></div></div>`).join("");
-  }
-
-  const navToggle = $("#navToggle");
-  navToggle?.addEventListener("click", () => $("nav")?.classList.toggle("open"));
-
-  if (location.hash) go(location.hash.slice(1));
+  let activeType = "masuk", activeFilter = "semua", editingId = null, booting = true;
+  let dashboardPeriod = "today", dashboardFilter = "keluar";
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  const rupiah = v => new Intl.NumberFormat("id-ID", {style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(v)||0);
+  const esc = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  function today(){const d=new Date(),l=new Date(d.getTime()-d.getTimezoneOffset()*60000);return l.toISOString().slice(0,10)}
+  function newId(){return crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}
+  function normalize(x){return{id:x.id||newId(),d:x.d||x.transaction_date||today(),t:x.t==="keluar"||x.type==="keluar"?"keluar":"masuk",a:Number(x.a??x.amount)||0,c:String(x.c??x.category??"Lain-lain"),x:String(x.x??x.description??"")}}
+  function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]");return Array.isArray(d)?d.map(normalize).filter(x=>x.a>0):[]}catch{return[]}}
+  function saveLocal(){localStorage.setItem(LOCAL_KEY,JSON.stringify(transactions))}
+  function toast(m){const e=$("#toast");if(!e)return;e.textContent=m;e.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.classList.remove("show"),2800)}
+  async function cloudLoad(){if(!cloudEnabled)return null;const{data,error}=await supabaseClient.from("transactions").select("id,type,amount,category,description,transaction_date,created_at").order("transaction_date",{ascending:false}).order("created_at",{ascending:false});if(error)throw error;return(data||[]).map(normalize)}
+  async function cloudInsert(t){if(!cloudEnabled)return;const{error}=await supabaseClient.from("transactions").insert({id:t.id,type:t.t,amount:t.a,category:t.c,description:t.x,transaction_date:t.d});if(error)throw error}
+  async function cloudUpdate(t){if(!cloudEnabled)return;const{error}=await supabaseClient.from("transactions").update({type:t.t,amount:t.a,category:t.c,description:t.x,transaction_date:t.d}).eq("id",t.id);if(error)throw error}
+  async function cloudDelete(id){if(!cloudEnabled)return;const{error}=await supabaseClient.from("transactions").delete().eq("id",id);if(error)throw error}
+  async function boot(){try{if(!supabaseClient)throw Error("Supabase client tidak tersedia");const remote=await cloudLoad();if(!remote.length&&transactions.length){for(const t of transactions){try{await cloudInsert(t)}catch(e){console.warn("Migrasi lokal gagal",e)}}transactions=await cloudLoad()||[]}else transactions=remote;saveLocal();cloudEnabled=true}catch(e){console.error(e);cloudEnabled=false;toast(`⚠ Supabase gagal: ${e.message||"cek tabel/RLS"}`)}booting=false;setStatus();renderAll()}
+  function setStatus(){const b=document.querySelector(".brand small");if(b)b.textContent=cloudEnabled?"Telur · Cloud":"Telur · Lokal"}
+  function go(page){$$(".page").forEach(e=>e.classList.toggle("active",e.id===page));if(page==="dashboard")renderDashboard();if(page==="transactions")renderTransactions();if(location.hash!=="#"+page)history.replaceState(null,"","#"+page);window.scrollTo({top:0,behavior:"smooth"})}
+  $$('[data-page]').forEach(e=>e.addEventListener("click",ev=>{ev.preventDefault();go(e.dataset.page);if($(".topbar")?.classList.contains("menu-open"))$("#navToggle")?.click()}));
+  $$(".seg").forEach(b=>b.addEventListener("click",()=>{$$(".seg").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeType=b.dataset.type}));
+  const amount=$("#amount");
+  amount?.addEventListener("input",()=>{const digits=amount.value.replace(/\D/g,"");amount.value=digits?Number(digits).toLocaleString("id-ID"):""});
+  amount?.addEventListener("keydown",e=>{if(["e","E","+","-",".",","].includes(e.key))e.preventDefault()});
+  if($("#date"))$("#date").value=today();
+  $("#txForm")?.addEventListener("submit",async e=>{e.preventDefault();if(booting)return toast("⏳ Menyiapkan database...");const a=Number($("#amount").value.replace(/\D/g,"")),c=$("#category").value.trim()||"Lain-lain",x=$("#description").value.trim(),d=$("#date").value;if(!a)return toast("⚠ Isi nominal lebih dari 0");if(!d)return toast("⚠ Tanggal wajib diisi");const t={id:editingId||newId(),d:d,t:activeType,a:a,c:c,x:x},btn=e.submitter;if(btn)btn.disabled=true;try{if(editingId){const i=transactions.findIndex(z=>String(z.id)===String(editingId));if(i<0)throw Error("Transaksi tidak ditemukan");await cloudUpdate(t);transactions[i]=t;toast("✅ Transaksi diperbarui")}else{await cloudInsert(t);transactions.unshift(t);toast(`✅ ${activeType==="masuk"?"Uang masuk":"Uang keluar"} ${rupiah(a)} tersimpan`)}saveLocal();cancelEdit(false);renderAll()}catch(err){console.error(err);toast(`❌ Gagal menyimpan: ${err.message||"periksa Supabase"}`)}finally{if(btn)btn.disabled=false}});
+  function startEdit(id){const t=transactions.find(z=>String(z.id)===String(id));if(!t)return;editingId=t.id;activeType=t.t;$$(".seg").forEach(b=>b.classList.toggle("active",b.dataset.type===activeType));$("#amount").value=Number(t.a).toLocaleString("id-ID");$("#category").value=t.c;$("#description").value=t.x;$("#date").value=t.d;const s=$("#txForm button[type=submit]");s.textContent="💾 Simpan Perubahan";let c=$("#cancelEdit");if(!c){c=document.createElement("button");c.type="button";c.id="cancelEdit";c.className="btn secondary";c.textContent="Batal Edit";c.onclick=()=>cancelEdit();s.parentElement.appendChild(c)}go("transactions");setTimeout(()=>$("#amount")?.focus(),100)}
+  function cancelEdit(show=true){editingId=null;$("#txForm")?.reset();if($("#date"))$("#date").value=today();activeType="masuk";$$(".seg").forEach(b=>b.classList.toggle("active",b.dataset.type==="masuk"));const s=$("#txForm button[type=submit]");if(s)s.textContent="Simpan Transaksi";$("#cancelEdit")?.remove();if(show)toast("Edit dibatalkan")}
+  $$(".filter").forEach(b=>b.addEventListener("click",()=>{$$(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter;renderTransactions()}));
+  $("#search")?.addEventListener("input",renderTransactions);
+  $$(".period").forEach(b=>b.addEventListener("click",()=>{$$(".period").forEach(x=>x.classList.remove("active"));b.classList.add("active");dashboardPeriod=b.dataset.period;renderDonut()}));
+  $$(".cash-filter-btn").forEach(b=>b.addEventListener("click",()=>{$$(".cash-filter-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");dashboardFilter=b.dataset.chartFilter;renderDonut()}));
+  $$('[data-quick-type]').forEach(b=>b.addEventListener("click",()=>{activeType=b.dataset.quickType;$$(".seg").forEach(x=>x.classList.toggle("active",x.dataset.type===activeType));setTimeout(()=>$("#amount")?.focus(),150)}));
+  function renderTransactions(){const list=$("#txList");if(!list)return;const q=$("#search")?.value.trim().toLowerCase()||"";const data=transactions.filter(t=>(activeFilter==="semua"||t.t===activeFilter)&&(!q||[t.c,t.x,t.a].some(v=>String(v).toLowerCase().includes(q))));if(!data.length){list.innerHTML='<div class="empty">Belum ada transaksi.</div>';return}list.innerHTML=data.map(t=>{const i=t.t==="masuk",d=new Date(t.d+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});return`<div class="tx ${i?"in":"out"}"><div class="tx-icon">${i?"↗":"↘"}</div><div class="tx-main"><b>${esc(t.x||t.c)}</b><small>${esc(t.c)} • ${esc(d)}</small><span class="tx-type">${i?"UANG MASUK":"UANG KELUAR"}</span></div><div class="tx-amount ${i?"positive":"negative"}">${i?"+":"−"} ${rupiah(t.a)}</div><div class="tx-actions"><button type="button" class="edit" data-id="${esc(t.id)}">✏️</button><button type="button" class="delete" data-id="${esc(t.id)}">🗑️</button></div></div>`}).join("");$$('button.edit').forEach(b=>b.onclick=()=>startEdit(b.dataset.id));$$('button.delete').forEach(b=>b.onclick=async()=>{const id=b.dataset.id,t=transactions.find(z=>String(z.id)===String(id));if(!t||!confirm(`Hapus transaksi ${rupiah(t.a)}?`))return;try{await cloudDelete(id);transactions=transactions.filter(z=>String(z.id)!==String(id));saveLocal();renderAll();toast("🗑️ Transaksi dihapus")}catch(err){toast(`❌ Gagal menghapus: ${err.message}`)}})}
+  function inPeriod(date){if(dashboardPeriod==="month"){const n=new Date(),d=new Date(date+"T00:00:00");return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}if(dashboardPeriod==="7days"){const n=new Date(),s=new Date();s.setHours(0,0,0,0);s.setDate(s.getDate()-6);const d=new Date(date+"T00:00:00");return d>=s&&d<=n}return date===today()}
+  function renderDashboard(){const n=new Date(),m=transactions.filter(t=>{const d=new Date(t.d+"T00:00:00");return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}),inc=transactions.filter(t=>t.t==="masuk").reduce((s,t)=>s+t.a,0),out=transactions.filter(t=>t.t==="keluar").reduce((s,t)=>s+t.a,0),mi=m.filter(t=>t.t==="masuk").reduce((s,t)=>s+t.a,0),mo=m.filter(t=>t.t==="keluar").reduce((s,t)=>s+t.a,0);$("#balance")&&($("#balance").textContent=rupiah(inc-out));$("#income")&&($("#income").textContent=rupiah(mi));$("#expense")&&($("#expense").textContent=rupiah(mo));$("#openingBalance")&&($("#openingBalance").textContent="Rp0");renderDonut()}
+  function renderDonut(){const data=transactions.filter(t=>t.t===dashboardFilter&&inPeriod(t.d)),total=data.reduce((s,t)=>s+t.a,0),amount=$("#donutAmount"),label=$("#donutLabel"),chart=$("#donutChart");if(amount)amount.textContent=rupiah(total);if(label)label.textContent=dashboardFilter==="keluar"?"keluar":"masuk";if(chart)chart.style.setProperty("--donut-value",total?"100%":"0%");const box=$("#categoryChart");if(!box)return;const map={};data.forEach(t=>map[t.c]=(map[t.c]||0)+t.a);const en=Object.entries(map).sort((a,b)=>b[1]-a[1]);box.innerHTML=en.map(([c,v])=>`<div class="category-row"><div class="label"><span>${esc(c)}</span><b>${rupiah(v)}</b></div><div class="track"><div class="fill" style="width:${total?Math.max(4,v/total*100):0}%"></div></div></div>`).join("")}
+  function renderAll(){renderTransactions();renderDashboard()}
   boot();
-
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
-  }
 })();

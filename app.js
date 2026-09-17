@@ -1,10 +1,18 @@
 (() => {
   "use strict";
-  const KEY = "cbt_preview_tx";
-  let transactions = load();
+
+  const SUPABASE_URL = "https://ouyxhcmjwrqfmlqzuagj.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_NW2jRbkdYVN1IxLqeIv2mA_sltgk_QZ";
+  const LOCAL_KEY = "cbt_preview_tx";
+
+  const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let currentUser = null;
+  let cloudEnabled = !!supabaseClient;
+  let transactions = loadLocal();
   let activeType = "masuk";
   let activeFilter = "semua";
   let editingId = null;
+  let booting = true;
 
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
@@ -14,35 +22,146 @@
   }
 
   function esc(value) {
-    return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+    return String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[c]));
   }
 
-  function today() { return new Date().toISOString().slice(0, 10); }
+  function today() {
+    const d = new Date();
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
 
-  function load() {
+  function newId() {
+    return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function normalizeLocal(item) {
+    return {
+      id: item.id || newId(),
+      d: item.d || item.transaction_date || today(),
+      t: item.t === "keluar" || item.type === "keluar" ? "keluar" : "masuk",
+      a: Number(item.a ?? item.amount) || 0,
+      c: String(item.c ?? item.category ?? "Lain-lain"),
+      x: String(item.x ?? item.description ?? "")
+    };
+  }
+
+  function loadLocal() {
     try {
-      const data = JSON.parse(localStorage.getItem(KEY) || "[]");
-      if (!Array.isArray(data)) return [];
-      return data.map(item => ({
-        id: item.id || crypto.randomUUID?.() || String(Date.now()),
-        d: item.d || today(),
-        t: item.t === "keluar" ? "keluar" : "masuk",
-        a: Number(item.a) || 0,
-        c: String(item.c || "Lain-lain"),
-        x: String(item.x || "")
-      }));
+      const data = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
+      return Array.isArray(data) ? data.map(normalizeLocal).filter(x => x.a > 0) : [];
     } catch { return []; }
   }
 
-  function save() { localStorage.setItem(KEY, JSON.stringify(transactions)); }
+  function saveLocal() {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(transactions));
+  }
 
   function toast(message) {
-    const element = $("#toast");
-    if (!element) return;
-    element.textContent = message;
-    element.classList.add("show");
+    const el = $("#toast");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.add("show");
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => element.classList.remove("show"), 2500);
+    toast.timer = setTimeout(() => el.classList.remove("show"), 2800);
+  }
+
+  async function cloudInsert(tx) {
+    if (!cloudEnabled || !currentUser) return false;
+    const { error } = await supabaseClient.from("transactions").insert({
+      id: tx.id,
+      user_id: currentUser.id,
+      type: tx.t,
+      amount: tx.a,
+      category: tx.c,
+      description: tx.x,
+      transaction_date: tx.d
+    });
+    if (error) throw error;
+    return true;
+  }
+
+  async function cloudUpdate(tx) {
+    if (!cloudEnabled || !currentUser) return false;
+    const { error } = await supabaseClient.from("transactions").update({
+      type: tx.t,
+      amount: tx.a,
+      category: tx.c,
+      description: tx.x,
+      transaction_date: tx.d
+    }).eq("id", tx.id).eq("user_id", currentUser.id);
+    if (error) throw error;
+    return true;
+  }
+
+  async function cloudDelete(id) {
+    if (!cloudEnabled || !currentUser) return false;
+    const { error } = await supabaseClient.from("transactions").delete().eq("id", id).eq("user_id", currentUser.id);
+    if (error) throw error;
+    return true;
+  }
+
+  async function cloudLoad() {
+    if (!cloudEnabled || !currentUser) return [];
+    const { data, error } = await supabaseClient.from("transactions")
+      .select("id,user_id,type,amount,category,description,transaction_date,created_at")
+      .eq("user_id", currentUser.id)
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(normalizeLocal);
+  }
+
+  async function initializeCloud() {
+    if (!supabaseClient) return;
+
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    if (sessionData.session?.user) {
+      currentUser = sessionData.session.user;
+    } else {
+      const { data, error } = await supabaseClient.auth.signInAnonymously();
+      if (error) throw error;
+      currentUser = data.user;
+    }
+
+    const remote = await cloudLoad();
+
+    // First installation: migrate old localStorage records to Supabase.
+    if (!remote.length && transactions.length) {
+      for (const tx of transactions) {
+        try { await cloudInsert(tx); } catch (e) { console.warn("Migration gagal", e); }
+      }
+      transactions = await cloudLoad();
+    } else {
+      transactions = remote;
+    }
+
+    saveLocal();
+  }
+
+  function setBootStatus() {
+    const brand = document.querySelector(".brand small");
+    if (brand) brand.textContent = cloudEnabled && currentUser ? "Telur · Cloud" : "Telur · Lokal";
+  }
+
+  async function boot() {
+    try {
+      if (cloudEnabled) {
+        await initializeCloud();
+      }
+    } catch (error) {
+      console.error("Supabase gagal:", error);
+      cloudEnabled = false;
+      setBootStatus();
+      toast("⚠ Supabase belum aktif. Data tetap disimpan lokal.");
+    }
+
+    booting = false;
+    setBootStatus();
+    renderTransactions();
+    renderDashboard();
   }
 
   function go(page) {
@@ -52,7 +171,10 @@
     if (location.hash !== "#" + page) history.replaceState(null, "", "#" + page);
   }
 
-  $$('[data-page]').forEach(el => el.addEventListener("click", e => { e.preventDefault(); go(el.dataset.page); }));
+  $$('[data-page]').forEach(el => el.addEventListener("click", e => {
+    e.preventDefault();
+    go(el.dataset.page);
+  }));
 
   $$(".seg").forEach(button => button.addEventListener("click", () => {
     $$(".seg").forEach(item => item.classList.remove("active"));
@@ -62,8 +184,10 @@
 
   if ($("#date")) $("#date").value = today();
 
-  $("#txForm")?.addEventListener("submit", event => {
+  $("#txForm")?.addEventListener("submit", async event => {
     event.preventDefault();
+    if (booting) return toast("⏳ Menyiapkan database...");
+
     const amount = Number($("#amount")?.value);
     const category = $("#category")?.value.trim() || "Lain-lain";
     const description = $("#description")?.value.trim() || "";
@@ -72,39 +196,50 @@
     if (!Number.isFinite(amount) || amount <= 0) return toast("⚠ Isi nominal lebih dari 0");
     if (!date || Number.isNaN(Date.parse(date))) return toast("⚠ Tanggal tidak valid");
 
-    if (editingId) {
-      const index = transactions.findIndex(item => String(item.id) === String(editingId));
-      if (index === -1) return cancelEdit();
-      transactions[index] = { ...transactions[index], d: date, t: activeType, a: amount, c: category, x: description };
-      save();
+    const tx = { id: editingId || newId(), d: date, t: activeType, a: amount, c: category, x: description };
+    const button = event.submitter;
+    if (button) button.disabled = true;
+
+    try {
+      if (editingId) {
+        const index = transactions.findIndex(item => String(item.id) === String(editingId));
+        if (index === -1) throw new Error("Transaksi tidak ditemukan");
+        if (cloudEnabled) await cloudUpdate(tx);
+        transactions[index] = tx;
+        toast("✅ Transaksi berhasil diperbarui");
+      } else {
+        if (cloudEnabled) await cloudInsert(tx);
+        transactions.unshift(tx);
+        toast(`✅ ${activeType === "masuk" ? "Uang masuk" : "Uang keluar"} ${rupiah(amount)} tersimpan`);
+      }
+
+      saveLocal();
       cancelEdit(false);
       renderTransactions();
       renderDashboard();
-      toast("✅ Transaksi berhasil diperbarui");
-      return;
+    } catch (error) {
+      console.error(error);
+      toast(`❌ Gagal menyimpan: ${error.message || "periksa Supabase"}`);
+    } finally {
+      if (button) button.disabled = false;
     }
-
-    transactions.unshift({ id: crypto.randomUUID?.() || String(Date.now()), d: date, t: activeType, a: amount, c: category, x: description });
-    save();
-    event.target.reset();
-    $("#date").value = today();
-    renderTransactions();
-    renderDashboard();
-    toast(`✅ ${activeType === "masuk" ? "Uang masuk" : "Uang keluar"} ${rupiah(amount)} tersimpan`);
   });
 
   function startEdit(id) {
     const transaction = transactions.find(item => String(item.id) === String(id));
     if (!transaction) return toast("⚠ Transaksi tidak ditemukan");
+
     editingId = transaction.id;
-    activeType = transaction.t === "keluar" ? "keluar" : "masuk";
+    activeType = transaction.t;
     $$(".seg").forEach(button => button.classList.toggle("active", button.dataset.type === activeType));
     $("#amount").value = transaction.a;
     $("#category").value = transaction.c || "";
     $("#description").value = transaction.x || "";
     $("#date").value = transaction.d || today();
+
     const submit = $('#txForm button[type="submit"]');
     if (submit) submit.textContent = "💾 Simpan Perubahan";
+
     let cancel = $("#cancelEdit");
     if (!cancel) {
       cancel = document.createElement("button");
@@ -159,6 +294,7 @@
       list.innerHTML = '<div class="empty">Belum ada transaksi.</div>';
       return;
     }
+
     list.innerHTML = data.map(transaction => {
       const isIn = transaction.t === "masuk";
       const date = new Date(transaction.d + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
@@ -166,16 +302,25 @@
     }).join("");
 
     $$(".edit").forEach(button => button.addEventListener("click", () => startEdit(button.dataset.editId)));
-    $$(".delete").forEach(button => button.addEventListener("click", () => {
+    $$(".delete").forEach(button => button.addEventListener("click", async () => {
       const id = button.dataset.deleteId;
       const transaction = transactions.find(item => String(item.id) === String(id));
       if (!transaction) return;
       if (!confirm(`Hapus transaksi ${rupiah(transaction.a)}?`)) return;
-      transactions = transactions.filter(item => String(item.id) !== String(id));
-      save();
-      renderTransactions();
-      renderDashboard();
-      toast("🗑️ Transaksi dihapus");
+
+      button.disabled = true;
+      try {
+        if (cloudEnabled) await cloudDelete(id);
+        transactions = transactions.filter(item => String(item.id) !== String(id));
+        saveLocal();
+        renderTransactions();
+        renderDashboard();
+        toast("🗑️ Transaksi dihapus");
+      } catch (error) {
+        console.error(error);
+        toast(`❌ Gagal menghapus: ${error.message || "periksa Supabase"}`);
+        button.disabled = false;
+      }
     }));
   }
 
@@ -220,18 +365,11 @@
     chart.innerHTML = rows.map(([name, value]) => `<div class="cat-row"><span class="cat-name">${esc(name)}</span><div class="track"><i style="width:${value / max * 100}%"></i></div><span class="cat-value">${rupiah(value)}</span></div>`).join("");
   }
 
-  if (!transactions.length) {
-    transactions = [
-      { id: "demo-1", d: today(), t: "masuk", a: 247500, c: "Penjualan Warung", x: "Setoran Warung Bu Siti" },
-      { id: "demo-2", d: today(), t: "keluar", a: 100000, c: "Transportasi", x: "BBM antar grosir" }
-    ];
-    save();
-  }
-
   const initial = location.hash.slice(1);
   go(["home", "dashboard", "transactions"].includes(initial) ? initial : "home");
+  boot();
 
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => { navigator.serviceWorker.register("./service-worker.js").catch(() => {}); });
+    window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
   }
 })();

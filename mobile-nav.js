@@ -11,6 +11,15 @@
     document.head.appendChild(style);
   }
 
+  // Register the service worker so the site is a real installable PWA.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+        .then(reg => console.log("PWA service worker aktif:", reg.scope))
+        .catch(err => console.error("PWA service worker gagal:", err));
+    });
+  }
+
   const toggle = document.getElementById("navToggle");
   const topbar = document.querySelector(".topbar");
   const nav = document.querySelector(".topbar nav");

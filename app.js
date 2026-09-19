@@ -40,7 +40,41 @@
   function renderTransactions(){const list=$("#txList");if(!list)return;const q=$("#search")?.value.trim().toLowerCase()||"";const data=transactions.filter(t=>(activeFilter==="semua"||t.t===activeFilter)&&(!q||[t.c,t.x,t.a].some(v=>String(v).toLowerCase().includes(q))));if(!data.length){list.innerHTML='<div class="empty">Belum ada transaksi.</div>';return}list.innerHTML=data.map(t=>{const i=t.t==="masuk",d=new Date(t.d+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});return`<div class="tx ${i?"in":"out"}"><div class="tx-icon">${i?"↗":"↘"}</div><div class="tx-main"><b>${esc(t.x||t.c)}</b><small>${esc(t.c)} • ${esc(d)}</small><span class="tx-type">${i?"UANG MASUK":"UANG KELUAR"}</span></div><div class="tx-amount ${i?"positive":"negative"}">${i?"+":"−"} ${rupiah(t.a)}</div><div class="tx-actions"><button type="button" class="edit" data-id="${esc(t.id)}">✏️</button><button type="button" class="delete" data-id="${esc(t.id)}">🗑️</button></div></div>`}).join("");$$('button.edit').forEach(b=>b.onclick=()=>startEdit(b.dataset.id));$$('button.delete').forEach(b=>b.onclick=async()=>{const id=b.dataset.id,t=transactions.find(z=>String(z.id)===String(id));if(!t||!confirm(`Hapus transaksi ${rupiah(t.a)}?`))return;try{await cloudDelete(id);transactions=transactions.filter(z=>String(z.id)!==String(id));renderAll();toast("🗑️ Transaksi dihapus")}catch(err){toast(`❌ Gagal menghapus: ${err.message}`)}})}
   function inPeriod(date){if(dashboardPeriod==="month"){const n=new Date(),d=new Date(date+"T00:00:00");return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}if(dashboardPeriod==="7days"){const n=new Date(),s=new Date();s.setHours(0,0,0,0);s.setDate(s.getDate()-6);const d=new Date(date+"T00:00:00");return d>=s&&d<=n}return date===today()}
   function renderDashboard(){const n=new Date(),m=transactions.filter(t=>{const d=new Date(t.d+"T00:00:00");return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}),inc=transactions.filter(t=>t.t==="masuk").reduce((s,t)=>s+t.a,0),out=transactions.filter(t=>t.t==="keluar").reduce((s,t)=>s+t.a,0),mi=m.filter(t=>t.t==="masuk").reduce((s,t)=>s+t.a,0),mo=m.filter(t=>t.t==="keluar").reduce((s,t)=>s+t.a,0);$("#balance")&&($("#balance").textContent=rupiah(openingBalance+inc-out));$("#income")&&($("#income").textContent=rupiah(mi));$("#expense")&&($("#expense").textContent=rupiah(mo));$("#openingBalance")&&($("#openingBalance").textContent=rupiah(openingBalance));renderDonut()}
-  function renderDonut(){const data=transactions.filter(t=>t.t===dashboardFilter&&inPeriod(t.d)),total=data.reduce((s,t)=>s+t.a,0),amount=$("#donutAmount"),label=$("#donutLabel"),chart=$("#donutChart");if(amount)amount.textContent=rupiah(total);if(label)label.textContent=dashboardFilter==="keluar"?"keluar":"masuk";if(chart)chart.style.setProperty("--progress",total?"100%":"0%");const box=$("#categoryChart");if(!box)return;const map={};data.forEach(t=>map[t.c]=(map[t.c]||0)+t.a);const en=Object.entries(map).sort((a,b)=>b[1]-a[1]);box.innerHTML=en.map(([c,v])=>`<div class="category-row"><div class="label"><span>${esc(c)}</span><b>${rupiah(v)}</b></div><div class="track"><div class="fill" style="width:${total?Math.max(4,v/total*100):0}%"></div></div></div>`).join("")}
+  function renderDonut(){
+    const data=transactions.filter(t=>t.t===dashboardFilter&&inPeriod(t.d));
+    const total=data.reduce((s,t)=>s+t.a,0);
+    const amount=$("#donutAmount"),label=$("#donutLabel"),chart=$("#donutChart");
+    if(amount)amount.textContent=rupiah(total);
+    if(label)label.textContent=dashboardFilter==="keluar"?"keluar":"masuk";
+    if(chart)chart.style.setProperty("--progress",total?"100%":"0%");
+
+    const box=$("#categoryChart");
+    if(!box)return;
+
+    const map={};
+    data.forEach(t=>{
+      const category=(t.c||"Lain-lain").trim()||"Lain-lain";
+      if(!map[category])map[category]={amount:0,count:0};
+      map[category].amount+=t.a;
+      map[category].count++;
+    });
+
+    const categories=Object.entries(map).sort((a,b)=>b[1].amount-a[1].amount);
+    if(!categories.length){
+      box.innerHTML='<div class="chart-empty">Belum ada kategori '+(dashboardFilter==="keluar"?"pengeluaran":"pemasukan")+' pada periode ini.</div>';
+      return;
+    }
+
+    const title=dashboardFilter==="keluar"?"Kategori Pengeluaran":"Kategori Pemasukan";
+    box.innerHTML='<div class="category-title">'+title+'</div>'+
+      categories.map(([category,v])=>`<div class="category-row">
+        <div class="label">
+          <span>${esc(category)} <small>${v.count} transaksi</small></span>
+          <b>${rupiah(v.amount)}</b>
+        </div>
+        <div class="track"><div class="fill" style="width:${total?Math.max(4,v.amount/total*100):0}%"></div></div>
+      </div>`).join("");
+  }
   function renderAll(){renderTransactions();renderDashboard()}
   boot();
 })();

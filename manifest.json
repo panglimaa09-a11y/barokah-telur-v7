@@ -1,10 +1,22 @@
 {
+  "id": "./",
   "name": "CatatanBarokah Telur",
   "short_name": "Barokah Telur",
+  "description": "Pencatatan keuangan usaha telur sederhana.",
+  "lang": "id-ID",
+  "dir": "ltr",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f3e8",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f5ee",
   "theme_color": "#176b45",
-  "lang": "id",
-  "description": "Pencatatan keuangan usaha telur sederhana."
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

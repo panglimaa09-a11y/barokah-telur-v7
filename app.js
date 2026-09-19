@@ -100,7 +100,7 @@
     try{
       const opening=await getOpeningBalanceForBackup();
       downloadJson(`catatanbarokah-backup-${today()}.json`,{
-        app:"CatatanBarokah Telur",
+        app:"PT GOLD OVA RAYA",
         version:1,
         exported_at:new Date().toISOString(),
         opening_balance:opening,
@@ -124,7 +124,7 @@
     try{
       const raw=await file.text();
       const backup=JSON.parse(raw);
-      if(backup?.app!=="CatatanBarokah Telur"||!Array.isArray(backup.transactions))throw Error("File backup CatatanBarokah tidak valid.");
+      if(backup?.app!=="PT GOLD OVA RAYA"||!Array.isArray(backup.transactions))throw Error("File backup PT GOLD OVA RAYA tidak valid.");
       const restored=backup.transactions.map(normalize).filter(t=>t.a>0&&t.d);
       if(!confirm(`Pulihkan ${restored.length} transaksi dari backup? Data yang ada sekarang akan diganti.`))return;
       const existing=[...transactions];
@@ -155,7 +155,7 @@
     if(booting)return toast("⏳ Database masih dimuat...");
     if(!cloudEnabled)return toast("❌ Database offline. Tidak bisa reset data.");
     if(!transactions.length&&Number(openingBalance)===0)return toast("ℹ️ Data sudah kosong");
-    if(!confirm("⚠️ Reset semua data CatatanBarokah? Semua transaksi dan saldo awal akan dihapus permanen."))return;
+    if(!confirm("⚠️ Reset semua data PT GOLD OVA RAYA? Semua transaksi dan saldo awal akan dihapus permanen."))return;
     if(!confirm("Konfirmasi terakhir: lanjutkan RESET SEMUA DATA?"))return;
     try{
       const existing=[...transactions];

@@ -1,0 +1,17 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/" },
+    { "source": "/transaksi", "destination": "/" },
+    { "source": "/nota", "destination": "/" }
+  ],
+  "headers": [
+    {
+      "source": "/service-worker.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
+}

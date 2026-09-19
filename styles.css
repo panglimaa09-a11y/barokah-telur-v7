@@ -52,3 +52,39 @@
 @keyframes glowFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-15px,18px,20px)}}
 @media(prefers-reduced-motion:reduce){#dashboard *,#dashboard *:before,#dashboard *:after{animation:none!important;transition:none!important;transform:none!important}}
 @media(max-width:767px){#dashboard .section-head h2{font-size:34px}#dashboard .cash-inner{transform:none;padding:30px 26px}#dashboard .cash-inner>strong{font-size:44px}#dashboard .stat{animation:none}#dashboard .quick-actions a{transform:none}#dashboard .donut{transform:none}}
+
+/* 3D animated hero */
+.hero{perspective:1400px}
+.hero .egg-art{
+  position:relative;
+  background:#050505!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  box-shadow:0 28px 70px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)!important;
+  transform-style:preserve-3d;
+  transform:rotateX(2deg) rotateY(-5deg);
+  overflow:hidden;
+  transition:transform .45s ease,box-shadow .45s ease;
+}
+.hero .egg-art:before{
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.08),transparent 42%),linear-gradient(135deg,rgba(255,255,255,.06),transparent 35%,rgba(255,255,255,.025));
+  pointer-events:none;
+}
+.hero .egg-art:hover{
+  transform:rotateX(0deg) rotateY(0deg) translateY(-5px);
+  box-shadow:0 35px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.1)!important;
+}
+.hero .egg{transform-style:preserve-3d;animation:eggFloat 4s ease-in-out infinite;filter:drop-shadow(0 14px 10px rgba(0,0,0,.38))}
+.hero .egg1{animation-delay:0s}
+.hero .egg2{animation-delay:-1.3s}
+.hero .egg3{animation-delay:-2.5s}
+.hero .crate{transform:translateZ(24px);filter:drop-shadow(0 18px 12px rgba(0,0,0,.45))}
+@keyframes eggFloat{
+  0%,100%{transform:translate3d(0,0,24px) rotate(-2deg)}
+  50%{transform:translate3d(0,-14px,45px) rotate(2deg)}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero .egg{animation:none!important}
+  .hero .egg-art{transition:none!important}
+}

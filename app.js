@@ -179,6 +179,18 @@
   $("#resetDataBtn")?.addEventListener("click",resetData);
   $("#restoreDataInput")?.addEventListener("change",e=>restoreData(e.target.files?.[0]));
 
+  window.printTransactionHistory=()=>{ 
+    const q=$("#search")?.value.trim().toLowerCase()||"";
+    const data=transactions.filter(t=>(activeFilter==="semua"||t.t===activeFilter)&&(!q||[t.c,t.x,t.a].some(v=>String(v).toLowerCase().includes(q))));
+    const total=data.reduce((s,t)=>s+t.a,0);
+    const typeLabel=activeFilter==="keluar"?"Pengeluaran":activeFilter==="masuk"?"Pemasukan":"Uang Masuk & Keluar";
+    const summary=$("#printTransactionSummary");
+    if(summary)summary.innerHTML=`<div class="print-meta">${typeLabel} • ${data.length} transaksi</div><div class="print-total">Total: ${rupiah(total)}</div>`;
+    document.body.classList.add("print-transactions");
+    window.print();
+    setTimeout(()=>{document.body.classList.remove("print-transactions");if(summary)summary.innerHTML=""},700);
+  };
+
   function renderAll(){renderTransactions();renderDashboard()}
   boot();
 })();

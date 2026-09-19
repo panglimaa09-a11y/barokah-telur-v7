@@ -75,6 +75,110 @@
         <div class="track"><div class="fill" style="width:${total?Math.max(4,v.amount/total*100):0}%"></div></div>
       </div>`).join("");
   }
+  async function getOpeningBalanceForBackup(){
+    if(!supabaseClient) return Number(openingBalance)||0;
+    const {data,error}=await supabaseClient.from("cash_settings").select("opening_balance").eq("id",true).maybeSingle();
+    if(error) throw error;
+    return Number(data?.opening_balance)||0;
+  }
+
+  function downloadJson(filename,payload){
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
+  async function saveData(){
+    if(booting)return toast("⏳ Database masih dimuat...");
+    if(!cloudEnabled)return toast("❌ Database offline. Data belum bisa disimpan sebagai backup.");
+    try{
+      const opening=await getOpeningBalanceForBackup();
+      downloadJson(`catatanbarokah-backup-${today()}.json`,{
+        app:"CatatanBarokah Telur",
+        version:1,
+        exported_at:new Date().toISOString(),
+        opening_balance:opening,
+        transactions:transactions.map(t=>({id:t.id,type:t.t,amount:t.a,category:t.c,description:t.x,transaction_date:t.d}))
+      });
+      toast("✅ Backup data berhasil disimpan");
+    }catch(err){
+      console.error(err);
+      toast("❌ Gagal membuat backup: "+(err.message||"periksa Supabase"));
+    }
+  }
+
+  function openRestore(){
+    if(booting)return toast("⏳ Database masih dimuat...");
+    $("#restoreDataInput")?.click();
+  }
+
+  async function restoreData(file){
+    if(!file)return;
+    if(!cloudEnabled)return toast("❌ Database offline. Tidak bisa memulihkan data.");
+    try{
+      const raw=await file.text();
+      const backup=JSON.parse(raw);
+      if(backup?.app!=="CatatanBarokah Telur"||!Array.isArray(backup.transactions))throw Error("File backup CatatanBarokah tidak valid.");
+      const restored=backup.transactions.map(normalize).filter(t=>t.a>0&&t.d);
+      if(!confirm(`Pulihkan ${restored.length} transaksi dari backup? Data yang ada sekarang akan diganti.`))return;
+      const existing=[...transactions];
+      for(const t of existing)await cloudDelete(t.id);
+      if(restored.length){
+        const rows=restored.map(t=>({id:t.id,type:t.t,amount:t.a,category:t.c,description:t.x,transaction_date:t.d}));
+        const {error}=await supabaseClient.from("transactions").insert(rows);
+        if(error)throw error;
+      }
+      const opening=Number(backup.opening_balance)||0;
+      const {error:openingError}=await supabaseClient.from("cash_settings").upsert({id:true,opening_balance:opening,updated_at:new Date().toISOString()},{onConflict:"id"});
+      if(openingError)throw openingError;
+      transactions=restored;
+      openingBalance=opening;
+      window.dispatchEvent(new CustomEvent("opening-balance-changed",{detail:opening}));
+      renderAll();
+      toast(`✅ ${restored.length} transaksi berhasil dipulihkan`);
+    }catch(err){
+      console.error(err);
+      toast("❌ Gagal memulihkan data: "+(err.message||"file tidak valid"));
+      try{transactions=await cloudLoad();renderAll()}catch{}
+    }finally{
+      if($("#restoreDataInput"))$("#restoreDataInput").value="";
+    }
+  }
+
+  async function resetData(){
+    if(booting)return toast("⏳ Database masih dimuat...");
+    if(!cloudEnabled)return toast("❌ Database offline. Tidak bisa reset data.");
+    if(!transactions.length&&Number(openingBalance)===0)return toast("ℹ️ Data sudah kosong");
+    if(!confirm("⚠️ Reset semua data CatatanBarokah? Semua transaksi dan saldo awal akan dihapus permanen."))return;
+    if(!confirm("Konfirmasi terakhir: lanjutkan RESET SEMUA DATA?"))return;
+    try{
+      const existing=[...transactions];
+      for(const t of existing)await cloudDelete(t.id);
+      const {error}=await supabaseClient.from("cash_settings").upsert({id:true,opening_balance:0,updated_at:new Date().toISOString()},{onConflict:"id"});
+      if(error)throw error;
+      transactions=[];
+      openingBalance=0;
+      window.dispatchEvent(new CustomEvent("opening-balance-changed",{detail:0}));
+      renderAll();
+      toast("🗑️ Semua data berhasil direset");
+    }catch(err){
+      console.error(err);
+      toast("❌ Reset gagal: "+(err.message||"periksa izin Supabase"));
+      try{transactions=await cloudLoad();renderAll()}catch{}
+    }
+  }
+
+  $("#saveDataBtn")?.addEventListener("click",saveData);
+  $("#restoreDataBtn")?.addEventListener("click",openRestore);
+  $("#resetDataBtn")?.addEventListener("click",resetData);
+  $("#restoreDataInput")?.addEventListener("change",e=>restoreData(e.target.files?.[0]));
+
   function renderAll(){renderTransactions();renderDashboard()}
   boot();
 })();

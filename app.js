@@ -44,3 +44,5 @@
   function renderAll(){renderTransactions();renderDashboard()}
   boot();
 })();
+
+// deployment sync: restored stable dashboard build
